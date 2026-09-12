@@ -1,25 +1,38 @@
 {
   "expo": {
-    "name": "engineering-portfolio",
+    "name": "ayushXwinner",
     "slug": "engineering-portfolio",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D1117"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "icon": "./assets/icon.png",
+        "backgroundColor": "#0D1117"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.ayushmmmut27.engineeringportfolio"
     },
     "web": {
+      "bundler": "metro",
+      "output": "static",
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5a2674f2-af32-464b-b813-d8940944f742"
+      }
     }
   }
 }
