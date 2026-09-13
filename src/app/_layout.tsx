@@ -1,18 +1,13 @@
+import React from 'react';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { LayoutProvider } from '../context/LayoutContext';
-
-export const unstable_settings = {
-  initialRouteName: '(tabs)',
-};
+import { TelemetryProvider } from '../context/TelemetryContext';
 
 export default function RootLayout() {
   return (
-    <LayoutProvider>
-      <StatusBar style="light" />
+    <TelemetryProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </LayoutProvider>
+    </TelemetryProvider>
   );
 }
