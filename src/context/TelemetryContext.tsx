@@ -8,13 +8,14 @@ interface TerminalData {
   vehicleType: string;
   loadDecision: string;
   throttleLevel: string;
+  predictDuration: number; // Added to hold the AI wait time
 }
 
 interface TelemetryContextType {
   power: string; voltage: string; current: string; bayStatus: string; soc: string;
   vehicleType: string; throttleLevel: string; loadDecision: string; predictProbability: string; 
   fetchStatus: string;
-  terminalsData: Record<number, TerminalData>; // NEW: Holds data for all 3 bays
+  terminalsData: Record<number, TerminalData>;
   setPower: (value: string) => void;
   setBayStatus: (value: string) => void;
 }
@@ -39,11 +40,11 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [predictProbability, setPredictProbability] = useState('0');
   const [fetchStatus, setFetchStatus] = useState('Waiting...');
 
-  // State for all 3 bays
+  // State initialized with predictDuration
   const [terminalsData, setTerminalsData] = useState<Record<number, TerminalData>>({
-    1: { power: '0', current: '0', soc: '0', bayStatus: 'STANDBY', vehicleType: '1', loadDecision: 'NORMAL', throttleLevel: '100' },
-    2: { power: '0', current: '0', soc: '0', bayStatus: 'STANDBY', vehicleType: '2', loadDecision: 'NORMAL', throttleLevel: '100' },
-    3: { power: '0', current: '0', soc: '0', bayStatus: 'STANDBY', vehicleType: '3', loadDecision: 'NORMAL', throttleLevel: '100' },
+    1: { power: '0', current: '0', soc: '0', bayStatus: 'STANDBY', vehicleType: '1', loadDecision: 'NORMAL', throttleLevel: '100', predictDuration: 0 },
+    2: { power: '0', current: '0', soc: '0', bayStatus: 'STANDBY', vehicleType: '2', loadDecision: 'NORMAL', throttleLevel: '100', predictDuration: 0 },
+    3: { power: '0', current: '0', soc: '0', bayStatus: 'STANDBY', vehicleType: '3', loadDecision: 'NORMAL', throttleLevel: '100', predictDuration: 0 },
   });
 
   useEffect(() => {
@@ -59,11 +60,12 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         const authData = await loginResponse.json();
         const jwtToken = authData.token;
-        const keys = "power,voltage,current,bayStatus,initialSoc,vehicleType,throttleLevel,loadDecision,predictProbablity";
+        
+        // FIXED: Added 'predictDuration' to the keys request list
+        const keys = "power,voltage,current,bayStatus,initialSoc,vehicleType,throttleLevel,loadDecision,predictProbablity,predictDuration";
 
         let newData = { ...terminalsData };
 
-        // Loop through all 3 devices
         for (const [idStr, deviceId] of Object.entries(DEVICE_MAP)) {
           const id = parseInt(idStr);
           const url = `https://thingsboard.cloud/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=${keys}`;
@@ -80,9 +82,10 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               vehicleType: data.vehicleType?.[0]?.value ? String(data.vehicleType[0].value) : String(id),
               loadDecision: data.loadDecision?.[0]?.value ? String(data.loadDecision[0].value) : 'NORMAL',
               throttleLevel: data.throttleLevel?.[0]?.value ? String(data.throttleLevel[0].value) : '100',
+              // FIXED: Successfully extracts the AI duration
+              predictDuration: data.predictDuration?.[0]?.value ? Number(data.predictDuration[0].value) : 0,
             };
 
-            // Keep Terminal 2 linked to Home Dashboard globals
             if (id === 2) {
               setPower(newData[2].power);
               setVoltage(data.voltage?.[0]?.value ? String(data.voltage[0].value) : '0');

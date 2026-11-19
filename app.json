@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ayushXwinner",
+    "name": "ayushXproject",
     "slug": "engineering-portfolio",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,12 +18,15 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.ayushmmmut27.engineeringportfolio"
+      "package": "com.ayushmmmut27.evproject"
     },
     "extra": {
       "eas": {
         "projectId": "5a2674f2-af32-464b-b813-d8940944f742"
       }
-    }
+    },
+    "plugins": [
+      "expo-sharing"
+    ]
   }
 }

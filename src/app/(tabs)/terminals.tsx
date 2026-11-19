@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'rea
 import { useTelemetry } from '../../context/TelemetryContext';
 
 export default function TerminalsScreen() {
-  const { terminalsData } = useTelemetry();
+  const { terminalsData, voltage, current } = useTelemetry() as any;
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -12,39 +12,53 @@ export default function TerminalsScreen() {
     setModalVisible(true);
   };
 
-  const getVehicleInfo = (typeId: string) => {
+  const getVehicleInfo = (typeId: string | number) => {
     switch (String(typeId)) {
       case '1': return { text: '2-WHEELER', emoji: '🛵' };
+      case '2': return { text: 'CAR', emoji: '🚗' };
       case '3': return { text: 'BUS', emoji: '🚌' };
-      case '2': 
-      default: return { text: 'CAR', emoji: '🚗' };
+      case '0':
+      default:  return { text: 'NONE', emoji: '⚡' };
     }
   };
+  
 
-  // Safe data extraction for the Modal
-  const activeData = selectedId !== null ? terminalsData[selectedId] : null;
+  const activeData = selectedId !== null ? (terminalsData[selectedId] || {}) : null;
   const activeVInfo = activeData ? getVehicleInfo(activeData.vehicleType) : { text: 'VEHICLE', emoji: '🔋' };
+
+  // AI Load reason dynamically updating based on ESP32 Status
+  const getReasonText = (data: any) => {
+    if (data.overloadActive) {
+      return `Hardware Overcurrent fault triggered! Output cut to 0% to protect terminal circuitry.`;
+    }
+    if (data.loadDecision === 'THROTTLE') {
+      return `Grid capacity limit reached. Output dynamically reduced to ${data.throttleLevel || 50}% to maintain transformer stability.`;
+    }
+    if (data.bayStatus === 'CHARGING') {
+      if (data.initialSoc <= 15) return 'Low SOC priority active. Supplying maximum 100% unrestricted power.';
+      return 'Optimal grid conditions. Charging at maximum safe capacity without restrictions.';
+    }
+    return 'Terminal is idle. Awaiting vehicle connection.';
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Charging Bays</Text>
       <Text style={styles.subtitle}>Select a bay to view live telemetry and AI optimizations</Text>
 
-      {/* Render All 3 Terminals Dynamically */}
       {[1, 2, 3].map((id) => {
-        const tData = terminalsData[id];
+        const tData = terminalsData[id] || {};
         const vInfo = getVehicleInfo(tData.vehicleType);
-        const isThrottled = tData.loadDecision === 'THROTTLE';
+        const isThrottled = tData.loadDecision === 'THROTTLE' || tData.overloadActive;
         const isCharging = tData.bayStatus === 'CHARGING';
 
         return (
           <View key={id} style={styles.terminalCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.terminalName}>Terminal {id}</Text>
-              
               <View style={[styles.statusBadge, isThrottled ? styles.throttleBadge : (isCharging ? styles.activeBadge : styles.freeBadge)]}>
                 <Text style={[styles.statusBadgeText, isThrottled ? styles.throttleText : (isCharging ? styles.activeBadgeText : styles.freeBadgeText)]}>
-                  {isThrottled ? `THROTTLED (${tData.throttleLevel}%)` : (isCharging ? 'ACTIVE' : 'FREE')}
+                  {isThrottled ? `THROTTLED (${tData.throttleLevel || 50}%)` : (isCharging ? 'ACTIVE' : 'FREE')}
                 </Text>
               </View>
             </View>
@@ -58,7 +72,6 @@ export default function TerminalsScreen() {
         );
       })}
 
-      {/* Live Telemetry Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -79,34 +92,40 @@ export default function TerminalsScreen() {
                 <View style={styles.grid}>
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>POWER DRAW</Text>
-                    <Text style={styles.statValue}>{activeData.power} W</Text>
+                    <Text style={styles.statValue}>{activeData.power || 0} W</Text>
                   </View>
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>LIVE SOC</Text>
-                    <Text style={styles.statValue}>{Number(activeData.soc).toFixed(1)}%</Text>
+                    <Text style={styles.statValue}>{Number(activeData.soc || 0).toFixed(1)}%</Text>
                   </View>
                   
+                  {/* REAL-TIME VOLTAGE AND CURRENT */}
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>VOLTAGE</Text>
+                    <Text style={styles.statValue}>{selectedId === 2 ? voltage || '--' : '230'} V</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>CURRENT</Text>
+                    <Text style={styles.statValue}>{selectedId === 2 ? current || '--' : (activeData.power / 230).toFixed(1)} A</Text>
+                  </View>
+
                   <View style={[styles.statBox, activeData.loadDecision === 'THROTTLE' && styles.alertBox]}>
                     <Text style={styles.statLabel}>AI DECISION</Text>
                     <Text style={[styles.statValue, activeData.loadDecision === 'THROTTLE' && styles.alertText]}>
-                      {activeData.loadDecision}
+                      {activeData.loadDecision || 'ALLOW'}
                     </Text>
                   </View>
                   <View style={[styles.statBox, activeData.loadDecision === 'THROTTLE' && styles.alertBox]}>
                     <Text style={styles.statLabel}>THROTTLE LEVEL</Text>
                     <Text style={[styles.statValue, activeData.loadDecision === 'THROTTLE' && styles.alertText]}>
-                      {activeData.throttleLevel}%
+                      {activeData.throttleLevel || '100'}%
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.reasonBox}>
                   <Text style={styles.reasonLabel}>EDGE AI STATUS REASON</Text>
-                  <Text style={styles.reasonText}>
-                    {activeData.loadDecision === 'THROTTLE' 
-                      ? `Grid congestion detected. Output dynamically reduced to ${activeData.throttleLevel}% to maintain stability.` 
-                      : (activeData.bayStatus === 'CHARGING' ? 'Optimal conditions. Charging at maximum safe capacity.' : 'Terminal is idle. Awaiting connection.')}
-                  </Text>
+                  <Text style={styles.reasonText}>{getReasonText(activeData)}</Text>
                 </View>
               </>
             )}
@@ -122,7 +141,7 @@ export default function TerminalsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#f5f7fa', paddingTop: 50 },
+  container: { flexGrow: 1, padding: 20, backgroundColor: '#f5f7fa', paddingTop: 50, paddingBottom: 30 },
   title: { fontSize: 28, fontWeight: 'bold', color: '#1a252c' },
   subtitle: { fontSize: 14, color: '#718096', marginBottom: 20, marginTop: 5 },
   terminalCard: { backgroundColor: '#ffffff', borderRadius: 16, padding: 18, marginBottom: 16, elevation: 2, borderWidth: 1, borderColor: '#e2e8f0' },

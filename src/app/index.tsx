@@ -1,5 +1,7 @@
+
 import { Redirect } from 'expo-router';
 
 export default function Index() {
-  return <Redirect href="/(tabs)" />;
+  // Redirect to the new login screen instead of the tabs
+  return <Redirect href="/login" />;
 }
